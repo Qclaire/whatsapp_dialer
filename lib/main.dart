@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(MyApp());
@@ -33,12 +35,20 @@ class _DialerState extends State<Dialer> {
   String _number;
   String msg = '';
 
-  _dialNumber(){
-    if(_number[0] =="0" && _number.length == 10){
+  _dialNumber()async{
+    var urlToLaunch = _number.length == 10 && _number[0] == "0" ?
+    "http://wa.me/233${_number.substring(1)}" :
+    "http://wa.me/$_number";
 
+    String error;
+
+    if (_number.length < 10) error = "You need 10 digits, you have ${_number.length}";
+    else if (_number.length == 10 && _number[0] != "0") error = "Invalid number";
+    else if(!await canLaunch(urlToLaunch)) error = "Sorry we couldn't open your number";
+    if(error != null) setState(() { msg = error;});
+    else launch(urlToLaunch);
     }
-      //
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +73,17 @@ class _DialerState extends State<Dialer> {
                 style: TextStyle(fontSize: 30),
                 autofocus: true,
                 maxLength: 12,
+                textAlign: TextAlign.center,
+
                 keyboardType: TextInputType.phone,
                 onChanged:(number){
                   setState(() {
-                    msg = "";
-                    _number = number;
+                    if(number[0] == "+") {
+                      msg = "No Symbols are allowed, please";
+                    }else {
+                      msg="";
+                      _number = number.replaceAll(" ", "");
+                    }
                   });
                 },
               ),
