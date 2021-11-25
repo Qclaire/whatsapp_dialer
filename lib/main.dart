@@ -1,8 +1,10 @@
 import 'package:clipboard/clipboard.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:whatsapp_dialer/Helpers.dart';
 
 
 void main() {
@@ -36,18 +38,17 @@ class Dialer extends StatefulWidget {
 
 class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   String _number;
+  String _countryCode;
   String msg = '';
-  String _clipboard='';
 
+  // Future<bool>_getCopiedText()=>FlutterClipboard.paste().then((value)=> isValidPhoneNumber(value));
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    FlutterClipboard.paste().then((value)=>{
-      setState((){_clipboard = value;})
-    });
+
+
   }
 
   @override
@@ -57,37 +58,48 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state){
-    if(state==AppLifecycleState.inactive || state == AppLifecycleState.detached) return;
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    //if(state==AppLifecycleState.inactive || state == AppLifecycleState.detached) return;
     final isForeground =  state == AppLifecycleState.resumed;
-    print("\n\n$isForeground\n\n");
     if (isForeground){
-      print("isResumed");
-      FlutterClipboard.paste().then((value)=>{
-      print("\n\nhi there$value\n\n"),
-        setState((){_clipboard = value;})
-      });
+
     }
   }
 
   _dialNumber()async{
-    var urlToLaunch = _number.length == 10 && _number[0] == "0" ?
-    "http://wa.me/233${_number.substring(1)}" :
-    "http://wa.me/$_number";
+    var urlToLaunch = "http://wa.me/${formatNumber()}";
+    print(urlToLaunch);
+    if(!await canLaunch(urlToLaunch)) setMessage("can't launch");
 
-    String error;
-
-    if (_number.length < 10) error = "${_number.length} digits; You need at least 10";
-    else if (_number.length == 10 && _number[0] != "0") error = "Invalid number";
-    else if(!await canLaunch(urlToLaunch)) error = "Sorry we couldn't open your number";
-    if(error != null) setState(() { msg = error;});
     else launch(urlToLaunch);
     }
 
+    bool _validInput(){
+      if (isValidPhoneNumber(_number) && _countryCode.length>1) return true;
+      return false;
+    }
 
+     formatNumber(){
+      if (_number.length == 10 || _number.length == 9) return "${_countryCode+_number}";
+      if (15<_number.length && _number.length > 10) return _number;
+    }
 
-
-
+    setMessage(String errorCode){
+    String _msg;
+    switch(errorCode){
+      case "short":
+        _msg= "You need at least 10";
+        break;
+      case "invalid":
+        _msg = "Enter a valid number";
+        break;
+      default:
+        _msg = "Sorry! Couldn't dial number";
+    }
+    setState(() {
+      msg = _msg;
+    });
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +108,13 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: [CountryCodePicker(
+            onChanged: (CountryCode code)=>{setState(() {
+              _countryCode = code.toString();
+            })},
+            initialSelection: "GH",
+          onInit: (code)=>_countryCode = code.toString()
+          )]
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
@@ -110,20 +129,21 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
               ],
             ),
 
-            _clipboard.length != 0 ? Row(
+             Column(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text("Copied: "),
-                Text("$_clipboard", style: TextStyle(color: Colors.green, fontSize: 15, fontWeight: FontWeight.w900,),),
+                Text("From your clipboard: "),
+                Text("", style: TextStyle(color: Colors.green, fontSize: 15, fontWeight: FontWeight.w900,),),
 
               ],
-            ):SizedBox.shrink(),
+            ),
 
 
             Padding(
               padding: const EdgeInsets.only(left:18.0, right: 18.0, top: 18.0, bottom: 20,),
               child: Column(
                 children: [
+
                   TextFormField(
                     decoration: InputDecoration( contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                     focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.green))),
