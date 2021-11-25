@@ -40,14 +40,19 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   String _number;
   String _countryCode;
   String msg = '';
+  TextEditingController _numberController = TextEditingController();
 
-  // Future<bool>_getCopiedText()=>FlutterClipboard.paste().then((value)=> isValidPhoneNumber(value));
+  Future<String>_getCopiedText()=>FlutterClipboard.paste().then((value)=> value.replaceAll(" ", ""));
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
+    FlutterClipboard.paste().then((value){
+      setState(() {
+        _numberController.text = value.replaceAll(" ", "");
+      });
+    });
 
   }
 
@@ -63,11 +68,15 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
     final isForeground =  state == AppLifecycleState.resumed;
     if (isForeground){
 
+      FlutterClipboard.paste().then((value) => setState((){
+        print("\n\nClipboard content: ${isValidPhoneNumber(value)} $value\n\n");
+        _numberController.text = value.replaceAll(" ", "");
+      }));
     }
   }
 
   _dialNumber()async{
-    var urlToLaunch = "http://wa.me/${formatNumber()}";
+    var urlToLaunch = "http://wa.me/${formatNumber(_number, _countryCode)}";
     print(urlToLaunch);
     if(!await canLaunch(urlToLaunch)) setMessage("can't launch");
 
@@ -75,13 +84,13 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
     }
 
     bool _validInput(){
-      if (isValidPhoneNumber(_number) && _countryCode.length>1) return true;
+      if (isValidPhoneNumber(_number)) return true;
       return false;
     }
 
-     formatNumber(){
-      if (_number.length == 10 || _number.length == 9) return "${_countryCode+_number}";
-      if (15<_number.length && _number.length > 10) return _number;
+     formatNumber(number, code){
+      if (number.length == 10 || number.length == 9) return "${code+number}";
+      if (15<number.length && number.length > 10) return number;
     }
 
     setMessage(String errorCode){
@@ -129,22 +138,14 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
               ],
             ),
 
-             Column(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text("From your clipboard: "),
-                Text("", style: TextStyle(color: Colors.green, fontSize: 15, fontWeight: FontWeight.w900,),),
-
-              ],
-            ),
-
-
             Padding(
               padding: const EdgeInsets.only(left:18.0, right: 18.0, top: 18.0, bottom: 20,),
               child: Column(
                 children: [
 
                   TextFormField(
+                    controller: _numberController,
+                    autofocus: true,
                     decoration: InputDecoration( contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                     focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.green))),
                     style: TextStyle(fontSize: 30),

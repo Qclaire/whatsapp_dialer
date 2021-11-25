@@ -5,7 +5,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 bool isValidPhoneNumber(String value) {
   String pattern = r'(^(?:[+0]9)?[0-9]{10,12}$)';
   RegExp regExp = new RegExp(pattern);
-  if (!regExp.hasMatch(value)) {
+  if (!regExp.hasMatch(value.replaceAll(' ', ""))) {
     return false;
   }
   return true;
