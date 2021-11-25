@@ -37,7 +37,6 @@ class Dialer extends StatefulWidget {
 }
 
 class _DialerState extends State<Dialer> with WidgetsBindingObserver {
-  String _number;
   String _countryCode;
   String msg = '';
   TextEditingController _numberController = TextEditingController();
@@ -76,19 +75,21 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   }
 
   _dialNumber()async{
-    var urlToLaunch = "http://wa.me/${formatNumber(_number, _countryCode)}";
+    var urlToLaunch = "http://wa.me/${formatNumber(_numberController.value, _countryCode)}";
     print(urlToLaunch);
     if(!await canLaunch(urlToLaunch)) setMessage("can't launch");
 
     else launch(urlToLaunch);
     }
 
-    bool _validInput(){
-      if (isValidPhoneNumber(_number)) return true;
+    bool _validInput(n){
+      if (isValidPhoneNumber(n)) return true;
       return false;
     }
 
-     formatNumber(number, code){
+     formatNumber(num, code){
+    var number = num;
+
       if (number.length == 10 || number.length == 9) return "${code+number}";
       if (15<number.length && number.length > 10) return number;
     }
@@ -151,15 +152,10 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
                     style: TextStyle(fontSize: 30),
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
-                    onChanged:(number){
-                      setState(() {
-                        if(number[0] == "+") {
-                          msg = "Symbols not allowed";
-                        }else {
-                          msg="";
-                          _number = number.replaceAll(" ", "");
-                        }
-                      });
+                    validator:(number){
+                      if (number.length > 9 && !isValidPhoneNumber(number))
+                        return "Doesn't look like a valid number";
+                      return "";
                     },
                   ),
                   Text(msg,style: TextStyle(fontSize: 16, color: Colors.redAccent),),
