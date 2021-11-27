@@ -41,7 +41,7 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   String msg = '';
   TextEditingController _numberController = TextEditingController();
 
-  Future<String>_getCopiedText()=>FlutterClipboard.paste().then((value)=> value.replaceAll(" ", ""));
+  Future<String> _getCopiedText() => FlutterClipboard.paste().then((value)=> value.replaceAll(" ", ""));
 
   @override
   void initState() {
@@ -65,17 +65,22 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     //if(state==AppLifecycleState.inactive || state == AppLifecycleState.detached) return;
     final isForeground =  state == AppLifecycleState.resumed;
-    if (isForeground){
-
-      FlutterClipboard.paste().then((value) => setState((){
-        print("\n\nClipboard content: ${isValidPhoneNumber(value)} $value\n\n");
-        _numberController.text = value.replaceAll(" ", "");
-      }));
+    if (isForeground) {
+      print("\n\n$isForeground\n\n");
+      return pasteFromClipboard();
     }
+
   }
 
-  _dialNumber()async{
-    var urlToLaunch = "http://wa.me/${formatNumber(_numberController.value, _countryCode)}";
+  pasteFromClipboard(){
+    return FlutterClipboard.paste().then((value) => _numberController.text = value.replaceAll(" ", ""));
+  }
+
+  void _dialNumber()async{
+    if (_numberController.value.text == "") {
+      return pasteFromClipboard();
+    }
+    var urlToLaunch = "http://wa.me/${formatNumber(_numberController.text.toString(), _countryCode)}";
     print(urlToLaunch);
     if(!await canLaunch(urlToLaunch)) setMessage("can't launch");
 
@@ -87,14 +92,16 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
       return false;
     }
 
-     formatNumber(num, code){
-    var number = num;
+     String formatNumber(String number, code){
+      String output;
+      if (number.contains("+") && number.length>10) output = number;
+      else if (number.length == 10 || number.length == 9) output = "${code+number}";
+      else if (number.length<15 && number.length > 10) output = number;
 
-      if (number.length == 10 || number.length == 9) return "${code+number}";
-      if (15<number.length && number.length > 10) return number;
+      return output;
     }
 
-    setMessage(String errorCode){
+    void setMessage(String errorCode){
     String _msg;
     switch(errorCode){
       case "short":
@@ -137,6 +144,8 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
                 Text("Type/Paste the number below", style: TextStyle(color: Colors.green, fontSize: 15, fontWeight: FontWeight.w900,),),
                 Text("We'll open it in whatsApp"),
               ],
+
+
             ),
 
             Padding(
@@ -165,7 +174,7 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
             TextButton(onPressed: _dialNumber,
               style: TextButton.styleFrom(backgroundColor: Colors.green, padding: EdgeInsets.symmetric(vertical: 20, horizontal:10),
                   fixedSize: Size(MediaQuery.of(context).size.width*.90, MediaQuery.of(context).size.height*.10), elevation: 10.0),
-              child: Text("Open in WhatsApp",style: TextStyle(fontSize: 20, color: Colors.white),),
+              child: Text("${_numberController.value.text == "" ? "Paste from clipboard": "Open in WhatsApp"}",style: TextStyle(fontSize: 20, color: Colors.white),),
             )
           ],
         ),
