@@ -39,6 +39,7 @@ class Dialer extends StatefulWidget {
 class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   String _countryCode;
   String msg = '';
+  bool _input=false;
   TextEditingController _numberController = TextEditingController();
 
   Future<String> _getCopiedText() => FlutterClipboard.paste().then((value)=> value.replaceAll(" ", ""));
@@ -47,12 +48,7 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    FlutterClipboard.paste().then((value){
-      setState(() {
-        _numberController.text = value.replaceAll(" ", "");
-      });
-    });
-
+    pasteFromClipboard();
   }
 
   @override
@@ -65,32 +61,38 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     //if(state==AppLifecycleState.inactive || state == AppLifecycleState.detached) return;
     final isForeground =  state == AppLifecycleState.resumed;
+    setState(() {
+      _input = _numberController.value.text.toString().length > 0;
+    });
     if (isForeground) {
-      print("\n\n$isForeground\n\n");
+
       return pasteFromClipboard();
     }
 
   }
 
   pasteFromClipboard(){
-    return FlutterClipboard.paste().then((value) => _numberController.text = value.replaceAll(" ", ""));
+    return FlutterClipboard.paste().then((value) {
+      if (!isValidPhoneNumber(value)) return setMessage("clipboard");
+      setState((){
+        _numberController.text = value.replaceAll(" ", "");
+      });
+    });
   }
 
   void _dialNumber()async{
     if (_numberController.value.text == "") {
       return pasteFromClipboard();
     }
-    var urlToLaunch = "http://wa.me/${formatNumber(_numberController.text.toString(), _countryCode)}";
+    String _number = _numberController.value.text.toString().replaceAll(" ", "");
+    if (!isValidPhoneNumber(_number)) return setMessage("invalid");
+    var urlToLaunch = "http://wa.me/${formatNumber(_number, _countryCode)}";
     print(urlToLaunch);
     if(!await canLaunch(urlToLaunch)) setMessage("can't launch");
 
     else launch(urlToLaunch);
     }
 
-    bool _validInput(n){
-      if (isValidPhoneNumber(n)) return true;
-      return false;
-    }
 
      String formatNumber(String number, code){
       String output;
@@ -108,7 +110,10 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
         _msg= "You need at least 10";
         break;
       case "invalid":
-        _msg = "Enter a valid number";
+        _msg = "Enter a valid  phone number";
+        break;
+      case "clipboard":
+        _msg  = "No valid number on clipboard";
         break;
       default:
         _msg = "Sorry! Couldn't dial number";
@@ -130,7 +135,9 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
               _countryCode = code.toString();
             })},
             initialSelection: "GH",
-          onInit: (code)=>_countryCode = code.toString()
+          onInit: (code)=> _countryCode = code.toString(),
+
+            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize:18,),
           )]
       ),
       body: Center(
@@ -152,7 +159,6 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
               padding: const EdgeInsets.only(left:18.0, right: 18.0, top: 18.0, bottom: 20,),
               child: Column(
                 children: [
-
                   TextFormField(
                     controller: _numberController,
                     autofocus: true,
@@ -166,15 +172,20 @@ class _DialerState extends State<Dialer> with WidgetsBindingObserver {
                         return "Doesn't look like a valid number";
                       return "";
                     },
+                    onChanged: (val){setState((){
+                      _input=val.length>0;
+                      msg = "";
+                    });},
                   ),
                   Text(msg,style: TextStyle(fontSize: 16, color: Colors.redAccent),),
+                  _input ? TextButton(onPressed: (){_numberController.clear();}, child: Text("Clear Text", style: TextStyle(color: Colors.grey, fontSize: 18),)):SizedBox.shrink()
                 ],
               ),
             ),
             TextButton(onPressed: _dialNumber,
               style: TextButton.styleFrom(backgroundColor: Colors.green, padding: EdgeInsets.symmetric(vertical: 20, horizontal:10),
                   fixedSize: Size(MediaQuery.of(context).size.width*.90, MediaQuery.of(context).size.height*.10), elevation: 10.0),
-              child: Text("${_numberController.value.text == "" ? "Paste from clipboard": "Open in WhatsApp"}",style: TextStyle(fontSize: 20, color: Colors.white),),
+              child: Text("${!_input ? "Paste from clipboard": "Open in WhatsApp"}",style: TextStyle(fontSize: 20, color: Colors.white),),
             )
           ],
         ),
